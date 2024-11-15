@@ -1,6 +1,9 @@
 services:
-  frontend:
+  app:
+    build: .
     ports:
-      - "3000:3000"
+      - "3000:3000"  # Frontend
+      - "3001:3001"  # Backend
     volumes:
-      - ./config.json:/app/public/config/config.json:ro
+      - ./config.json:/app/config.json
+      - ./data:/app/data

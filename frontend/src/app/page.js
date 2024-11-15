@@ -6,89 +6,23 @@ import axios from "axios";
 export default function Home() {
   const [statuses, setStatuses] = useState([]);
   const [title, setTitle] = useState("Status Page");
-  const [historyDays, setHistoryDays] = useState(90);
 
-  useEffect(() => {
-    const loadConfig = async () => {
-      const response = await fetch("/config.json");
-      const data = await response.json();
-
-      setTitle(data.configs.title);
-
-      setStatuses(
-        data.services.map((service) => ({
-          name: service.name,
-          address: service.address,
-          pingInterval: service.pingInterval * 1000,
-          showIp: service.showIp,
-          history: Array(historyDays).fill(null),
-          lastPing: Date.now(),
-          lastStatus: null,
-        }))
-      );
-    };
-    loadConfig();
-  }, []);
-
-  const pingAddress = async (status) => {
+  const fetchStatusData = async () => {
     try {
-      let isOnline = false;
-
-      if (status.address.startsWith("http")) {
-        const response = await axios.get(status.address, {
-          timeout: 5000,
-        });
-        isOnline = response.status === 200;
-      } else {
-        const response = await axios.get(`/api/ping?address=${status.address}`);
-        isOnline = response.data.alive;
-      }
-
-      return {
-        ...status,
-        lastPing: Date.now(),
-        lastStatus: isOnline,
-      };
-    } catch {
-      return {
-        ...status,
-        lastPing: Date.now(),
-        lastStatus: false,
-      };
+      const response = await axios.get("http://localhost:3001/api/status");
+      setTitle(response.data.title);
+      setStatuses(response.data.statuses);
+    } catch (error) {
+      console.error("Error fetching status data:", error);
     }
   };
 
-  const updateHistory = (status) => {
-    const dayIndex = Math.floor((Date.now() - status.lastPing) / (1000 * 60 * 60 * 24));
-
-    const newHistory = [...status.history];
-    newHistory[dayIndex] = status.lastStatus;
-
-    return {
-      ...status,
-      history: newHistory.slice(0, historyDays),
-    };
-  };
-
   useEffect(() => {
-    const checkStatus = async () => {
-      const now = Date.now();
-      const newStatuses = await Promise.all(
-        statuses.map((status) => {
-          if (now - status.lastPing >= status.pingInterval) {
-            return pingAddress(status).then(updateHistory);
-          }
-          return status;
-        })
-      );
+    fetchStatusData();
+    const interval = setInterval(fetchStatusData, 1000);
 
-      setStatuses(newStatuses);
-    };
-
-    checkStatus();
-    const interval = setInterval(checkStatus, 1000);
     return () => clearInterval(interval);
-  }, [statuses, historyDays]);
+  }, []);
 
   return (
     <div className="relative min-h-screen overflow-hidden">
