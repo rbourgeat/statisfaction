@@ -12,12 +12,15 @@
 
 # Run
 
+## With docker
+
 ```bash
 docker compose up -d
 ```
 
-# Build
+## Natively (with Node.JS)
 
 ```bash
-docker compose build
+cd backend && npm install && cd ../frontend && npm install && cd ..
+node backend/server.js & npm --prefix frontend run dev
 ```

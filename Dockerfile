@@ -14,19 +14,18 @@ RUN npm run build
 #######################################
 
 FROM node:23-alpine
-WORKDIR /app
+WORKDIR /app/
 
-COPY backend backend/
-COPY config.json .
+COPY backend/ .
 
 COPY --from=frontend-builder /app/frontend/.next frontend/.next
 COPY --from=frontend-builder /app/frontend/public frontend/public
 COPY --from=frontend-builder /app/frontend/package.json frontend/package.json
 
-RUN npm install express axios cors
+RUN npm install
 
 WORKDIR /app/frontend
 RUN npm install --omit=dev
 
 WORKDIR /app
-CMD ["sh", "-c", "node backend/server.js & npm --prefix frontend run start"]
+CMD ["sh", "-c", "node server.js & npm --prefix frontend run start"]
