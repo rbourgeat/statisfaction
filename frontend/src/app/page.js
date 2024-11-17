@@ -134,23 +134,25 @@ export default function Home() {
           {incidents.length > 0 ? (
             incidents.map((incident, index) => (
               <div key={index} className="mb-8">
-                <p className="text-lg font-bold text-white">{incident.title}</p>
+                <a
+                  href={incident.issueUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-lg font-bold text-blue-400 hover:underline"
+                >
+                  {incident.title}
+                </a>
                 <p className="text-sm text-gray-400">
-                  {new Date(incident.createdAt).toLocaleDateString()}
+                {
+                  new Date(incident.createdAt).toLocaleString("en-GB", {
+                    day: "2-digit",
+                    month: "short",
+                    hour: "2-digit",
+                    minute: "2-digit",
+                    hour12: false,
+                  }).replace(",", "").replace(":", "h")
+                }
                 </p>
-                <div className="mt-2 space-y-2">
-                  {(incident.comments || []).map((comment, idx) => (
-                    <div
-                      key={idx}
-                      className="p-4 bg-gray-800 rounded-md text-sm text-gray-200"
-                    >
-                      <p>{comment.body}</p>
-                      <p className="text-xs text-gray-400 mt-2">
-                        {new Date(comment.createdAt).toLocaleString()}
-                      </p>
-                    </div>
-                  ))}
-                </div>
               </div>
             ))
           ) : (

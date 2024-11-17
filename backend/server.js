@@ -101,34 +101,39 @@ async function fetchPastIncidents() {
   const repoOwner = config.repository.owner;
   const repoName = config.repository.repo;
 
+  const issueNumbers = statuses.flatMap((service) =>
+    service.dailyHistory.map((entry) => entry.issueNumber).filter(Boolean)
+  );
+
+  if (issueNumbers.length === 0) return [];
+
   try {
-    let issues = [];
-    
-    if (config.repository.platform === "github" && config.repository.authToken) {
-      const { data } = await gitClient.issues.listForRepo({
-        owner: repoOwner,
-        repo: repoName,
-        state: "all",
-        per_page: 100,
-        headers: {
-          Authorization: `token ${config.repository.authToken}`,
-        }
-      });
-      issues = filterIncidentsByMonth(data);
-    } else if (config.repository.platform === "gitlab" && config.configs.gitlabToken) {
-      const projectId = encodeURIComponent(`${repoOwner}/${repoName}`);
-      const data = await gitClient.Issues.all({
-        projectId,
-        state: "all",
-        per_page: 100,
-        headers: {
-          Authorization: `Bearer ${config.configs.gitlabToken}`,
-        }
-      });
-      issues = filterIncidentsByMonth(data);
+    const incidents = [];
+    if (config.repository.platform === "github") {
+      for (const issueNumber of issueNumbers) {
+        const { data } = await gitClient.issues.get({
+          owner: repoOwner,
+          repo: repoName,
+          issue_number: issueNumber,
+        });
+        incidents.push({
+          title: data.title,
+          createdAt: data.created_at,
+          issueUrl: data.html_url,
+        });
+      }
+    } else if (config.repository.platform === "gitlab") {
+      for (const issueNumber of issueNumbers) {
+        const projectId = encodeURIComponent(`${repoOwner}/${repoName}`);
+        const data = await gitClient.Issues.show(projectId, issueNumber);
+        incidents.push({
+          title: data.title,
+          createdAt: data.created_at,
+          issueUrl: data.web_url,
+        });
+      }
     }
-    
-    return issues;
+    return incidents;
   } catch (error) {
     console.error("Error fetching incidents:", error.message);
     return [];
@@ -218,7 +223,12 @@ function saveStatusData(stats) {
           (service.pingInterval / 1000)) /
         3600;
 
-      const todayData = { date: today, uptime, downtimeHours };
+      const todayData = {
+        date: today,
+        uptime,
+        downtimeHours,
+        issueNumber: service.dailyHistory[todayIndex]?.issueNumber || null,
+      };
 
       if (todayIndex >= 0) {
         service.dailyHistory[todayIndex] = todayData;
@@ -347,6 +357,21 @@ async function createIncident(serviceName, description) {
       },
     });
 
+    const issueNumber =
+      platform === "github" ? response.data.number : response.data.iid;
+
+    const today = getCurrentDay();
+    const service = statuses.find((s) => s.name === serviceName);
+    if (service) {
+      const todayEntry = service.dailyHistory.find((entry) => entry.date === today);
+      if (todayEntry) {
+        todayEntry.issueNumber = issueNumber;
+      } else {
+        service.dailyHistory.push({ date: today, uptime: 0, downtimeHours: 0, issueNumber });
+      }
+    }
+
+    saveStatusData(statuses);
     console.log(`Incident created successfully:`, response.data);
     return response.data;
   } catch (error) {
@@ -372,14 +397,8 @@ setInterval(updateStatuses, 1000);
 
 app.get("/api/incidents", async (req, res) => {
   const incidents = await fetchPastIncidents();
-  const incidentsWithComments = await Promise.all(
-    incidents.map(async (incident) => ({
-      ...incident,
-      comments: await fetchIncidentComments(incident.commentsUrl),
-    }))
-  );
-  console.log(incidents);
-  res.json({ incidents: incidentsWithComments });
+
+  res.json({ incidents: incidents });
 });
 
 app.get("/api/status", (req, res) => {
