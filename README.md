@@ -10,7 +10,7 @@
     <img src="./preview.png" alt="ImpAI Example" style="width: 100%; min-width: 300px; display: block; margin: auto;">
 </p>
 
-# How to Run
+## How to Run
 
 You can run this project either using Docker or natively (with Node.js). Choose the method that suits your environment.
 
@@ -34,3 +34,28 @@ node backend/server.js & npm --prefix frontend run dev
 ```
 
 Now, the application should be running locally! Access it through your browser at <http://localhost:3000> (or any other port specified in your setup).
+
+## Editing the Config File
+
+The configuration for this project is stored in a JSON file, which you can edit to customize the behavior of the service monitoring. Here's an example of the [default config](https://github.com/rbourgeat/statisfaction/blob/main/config.json).
+
+> [!NOTE]
+> The application will automatically detect the changes and apply them in real time, allowing you to update the status page on the fly!
+
+<details>
+<summary>Breakdown of the Config File</summary>
+
+- `configs`: This section includes general settings for the status page.
+    - `title`: The title of your status page.
+    - `incidentReportDelay`: The time delay (in seconds) before an incident report is triggered.
+- `services`: This section lists the services being monitored.
+    - `name`: The name of the service.
+    - `address`: The address or URL of the service.
+    - `pingInterval`: The interval (in seconds) at which to check the service's availability.
+    - `showIp`: Whether or not to show the IP address of the service.
+- `repository`: Contains the repository information if you are linking to a GitHub or GitLab project.
+    - `platform`: The platform used (GitHub or GitLab).
+    - `owner`: The repository owner (e.g., GitHub username or organization name).
+    - `repo`: The repository name.
+    - `authToken`: The authentication token used to access the repository (replace with your actual token).
+</details>

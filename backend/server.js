@@ -1,9 +1,17 @@
-const express = require("express");
-const axios = require("axios");
-const fs = require("fs");
-const path = require("path");
-const cors = require("cors");
-const ping = require("ping");
+import { fileURLToPath } from 'url';
+import express from 'express';
+import axios from 'axios';
+import path from 'path';
+import ping from 'ping';
+import cors from 'cors';
+import fs from 'fs';
+
+import { Octokit } from '@octokit/rest';
+import { Gitlab } from 'gitlab';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
 
 const app = express();
 const PORT = 3001;
@@ -17,7 +25,6 @@ if (!fs.existsSync(DATA_FOLDER)) {
   fs.mkdirSync(DATA_FOLDER, { recursive: true });
 }
 
-let statuses = loadStatusData();
 let config = loadConfig();
 
 function loadConfig() {
@@ -26,7 +33,141 @@ function loadConfig() {
     return newConfig;
   } catch (err) {
     console.error("Error reading config file:", err.message);
-    return config || { configs: {}, services: [] };
+    return { configs: { title: "Status Page" }, services: [] };
+  }
+}
+
+function initializeStatusData() {
+  return config.services.map((service) => ({
+    ...service,
+    pingInterval: service.pingInterval * 1000,
+    dailyHistory: [],
+    currentDayPings: { online: 0, total: 0 },
+    lastPing: Date.now(),
+    lastStatus: null,
+    incidentReported: false,
+  }));
+}
+
+function loadStatusData() {
+  if (fs.existsSync(DATA_FILE)) {
+    try {
+      const loadedData = JSON.parse(fs.readFileSync(DATA_FILE, "utf-8"));
+      return loadedData.map((service) => ({
+        ...service,
+        dailyHistory: service.dailyHistory || [],
+        currentDayPings: service.currentDayPings || { online: 0, total: 0 },
+        incidentReported: service.incidentReported || false,
+      }));
+    } catch (err) {
+      console.error("Error reading status data file:", err.message);
+      return initializeStatusData();
+    }
+  } else {
+    return initializeStatusData();
+  }
+}
+
+let statuses = loadStatusData();
+
+let gitClient;
+
+function initGitClient() {
+  const repoConfig = config.repository;
+  
+  if (repoConfig && repoConfig.authToken) {
+    if (repoConfig.platform === 'github') {
+      gitClient = new Octokit({ auth: repoConfig.authToken });
+      console.log('GitHub client initialized');
+    } else if (repoConfig.platform === 'gitlab') {
+      gitClient = new Gitlab({ token: repoConfig.authToken });
+      console.log('GitLab client initialized');
+    } else {
+      console.error('Unsupported platform:', repoConfig.platform);
+    }
+  } else {
+    console.error('No repository authentication token provided in the config.');
+  }
+}
+
+initGitClient();
+
+function getCurrentMonth() {
+  const now = new Date();
+  return now.toISOString().slice(0, 7);
+}
+
+async function fetchPastIncidents() {
+  const repoOwner = config.repository.owner;
+  const repoName = config.repository.repo;
+
+  try {
+    let issues = [];
+    
+    if (config.repository.platform === "github" && config.repository.authToken) {
+      const { data } = await gitClient.issues.listForRepo({
+        owner: repoOwner,
+        repo: repoName,
+        state: "all",
+        per_page: 100,
+        headers: {
+          Authorization: `token ${config.repository.authToken}`,
+        }
+      });
+      issues = filterIncidentsByMonth(data);
+    } else if (config.repository.platform === "gitlab" && config.configs.gitlabToken) {
+      const projectId = encodeURIComponent(`${repoOwner}/${repoName}`);
+      const data = await gitClient.Issues.all({
+        projectId,
+        state: "all",
+        per_page: 100,
+        headers: {
+          Authorization: `Bearer ${config.configs.gitlabToken}`,
+        }
+      });
+      issues = filterIncidentsByMonth(data);
+    }
+    
+    return issues;
+  } catch (error) {
+    console.error("Error fetching incidents:", error.message);
+    return [];
+  }
+}
+
+function filterIncidentsByMonth(issues) {
+  const currentMonth = getCurrentMonth();
+  return issues
+    .filter((issue) => issue.created_at.startsWith(currentMonth))
+    .map((issue) => ({
+      title: issue.title,
+      createdAt: issue.created_at,
+      commentsUrl: issue.comments_url || issue._links.notes,
+    }));
+}
+
+async function fetchIncidentComments(commentsUrl) {
+  try {
+    if (config.configs.githubToken) {
+      const { data } = await axios.get(commentsUrl, {
+        headers: { Authorization: `token ${config.configs.githubToken}` },
+      });
+      return data.map((comment) => ({
+        body: comment.body,
+        createdAt: comment.created_at,
+      }));
+    } else if (config.configs.gitlabToken) {
+      const { data } = await axios.get(commentsUrl, {
+        headers: { "Private-Token": config.configs.gitlabToken },
+      });
+      return data.map((note) => ({
+        body: note.body,
+        createdAt: note.created_at,
+      }));
+    }
+  } catch (error) {
+    console.error("Error fetching comments:", error.message);
+    return [];
   }
 }
 
@@ -61,37 +202,33 @@ function mergeStatusData(existingStatuses, newServices) {
   return [...updatedStatuses, ...newStatusData];
 }
 
-function loadStatusData() {
-  if (fs.existsSync(DATA_FILE)) {
-    try {
-      const loadedData = JSON.parse(fs.readFileSync(DATA_FILE, "utf-8"));
-      return loadedData.map((service) => ({
-        ...service,
-        dailyHistory: service.dailyHistory || [],
-        currentDayPings: service.currentDayPings || { online: 0, total: 0 },
-      }));
-    } catch (err) {
-      console.error("Error reading status data file:", err.message);
-      return initializeStatusData();
-    }
-  } else {
-    return initializeStatusData();
-  }
-}
-
-function initializeStatusData() {
-  return config.services.map((service) => ({
-    ...service,
-    pingInterval: service.pingInterval * 1000,
-    dailyHistory: [],
-    currentDayPings: { online: 0, total: 0 },
-    lastPing: Date.now(),
-    lastStatus: null,
-  }));
-}
-
 function saveStatusData(stats) {
   try {
+    const today = getCurrentDay();
+
+    stats.forEach((service) => {
+      const todayIndex = service.dailyHistory.findIndex(
+        (entry) => entry.date === today
+      );
+
+      const uptime =
+        (service.currentDayPings.online / service.currentDayPings.total) * 100 || 0;
+      const downtimeHours =
+        ((service.currentDayPings.total - service.currentDayPings.online) *
+          (service.pingInterval / 1000)) /
+        3600;
+
+      const todayData = { date: today, uptime, downtimeHours };
+
+      if (todayIndex >= 0) {
+        service.dailyHistory[todayIndex] = todayData;
+      } else {
+        service.dailyHistory.push(todayData);
+      }
+
+      service.dailyHistory = service.dailyHistory.slice(-90);
+    });
+
     const dataToSave = stats.map(({ currentDayPings, ...rest }) => rest);
     fs.writeFileSync(DATA_FILE, JSON.stringify(dataToSave, null, 2));
   } catch (err) {
@@ -123,42 +260,50 @@ function getCurrentDay() {
 
 async function updateStatuses() {
   const now = Date.now();
+  const { incidentReportDelay } = config.configs;
+
   const updatedStatuses = await Promise.all(
     statuses.map(async (service) => {
       if (now - service.lastPing >= service.pingInterval) {
         const isOnline = await pingService(service);
 
-        const currentDay = getCurrentDay();
-        let todayData = service.dailyHistory.find((day) => day.date === currentDay);
-
-        if (!todayData) {
-          todayData = {
-            date: currentDay,
-            uptime: 100,
-            downtimeHours: 0,
-          };
-          service.dailyHistory.push(todayData);
-        }
-
-        service.currentDayPings.total += 1;
         if (!isOnline) {
-          service.currentDayPings.online = service.currentDayPings.online || 0;
-          const downtimeIncrement = service.pingInterval / (1000 * 60 * 60);
-          todayData.downtimeHours += downtimeIncrement;
-          todayData.uptime = Math.max(
-            0,
-            ((service.currentDayPings.online / service.currentDayPings.total) * 100).toFixed(2)
-          );
+          if (!service.downtimeStart) {
+            service.downtimeStart = now;
+          }
+
+          const downtimeDuration = (now - service.downtimeStart) / 1000;
+
+          if (
+            downtimeDuration >= incidentReportDelay &&
+            !service.incidentReported
+          ) {
+            console.log(
+              `Service "${service.name}" is down for ${downtimeDuration} seconds. Creating incident...`
+            );
+
+            try {
+              await createIncident(
+                service.name,
+                `The service "${service.name}" has been down since ${new Date(
+                  service.downtimeStart
+                ).toISOString()} (Downtime: ${downtimeDuration} seconds).`
+              );
+              service.incidentReported = true;
+            } catch (error) {
+              console.error("Failed to report incident:", error.message);
+            }
+          }
         } else {
-          service.currentDayPings.online += 1;
-          todayData.uptime = Math.min(
-            100,
-            ((service.currentDayPings.online / service.currentDayPings.total) * 100).toFixed(2)
-          );
+          service.downtimeStart = null;
+          service.incidentReported = false;
         }
 
         service.lastPing = now;
         service.lastStatus = isOnline;
+
+        service.currentDayPings.total += 1;
+        if (isOnline) service.currentDayPings.online += 1;
       }
 
       return service;
@@ -166,7 +311,6 @@ async function updateStatuses() {
   );
 
   statuses = updatedStatuses;
-
   saveStatusData(statuses);
 }
 
@@ -180,6 +324,35 @@ function resetDailyPings() {
       }
     }
   });
+}
+
+async function createIncident(serviceName, description) {
+  const { platform, owner, repo, authToken } = config.repository;
+  const apiBase =
+    platform === "github"
+      ? `https://api.github.com/repos/${owner}/${repo}/issues`
+      : `https://gitlab.com/api/v4/projects/${encodeURIComponent(`${owner}/${repo}`)}/issues`;
+
+  try {
+    console.log(`Attempting to create incident for "${serviceName}" on ${platform}.`);
+    const issueData =
+      platform === "github"
+        ? { title: `Incident: ${serviceName}`, body: description }
+        : { title: `Incident: ${serviceName}`, description };
+
+    const response = await axios.post(apiBase, issueData, {
+      headers: {
+        Authorization: `Bearer ${authToken}`,
+        "Content-Type": "application/json",
+      },
+    });
+
+    console.log(`Incident created successfully:`, response.data);
+    return response.data;
+  } catch (error) {
+    console.error(`Failed to create incident for "${serviceName}":`, error.message);
+    throw error;
+  }
 }
 
 fs.watch(CONFIG_FILE, () => {
@@ -196,6 +369,18 @@ fs.watch(CONFIG_FILE, () => {
 setInterval(resetDailyPings, 1000 * 60 * 60 * 24);
 
 setInterval(updateStatuses, 1000);
+
+app.get("/api/incidents", async (req, res) => {
+  const incidents = await fetchPastIncidents();
+  const incidentsWithComments = await Promise.all(
+    incidents.map(async (incident) => ({
+      ...incident,
+      comments: await fetchIncidentComments(incident.commentsUrl),
+    }))
+  );
+  console.log(incidents);
+  res.json({ incidents: incidentsWithComments });
+});
 
 app.get("/api/status", (req, res) => {
   res.json({ title: config.configs.title, statuses });

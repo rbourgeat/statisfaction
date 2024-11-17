@@ -6,6 +6,7 @@ import axios from "axios";
 export default function Home() {
   const [statuses, setStatuses] = useState([]);
   const [title, setTitle] = useState("Status Page");
+  const [incidents, setIncidents] = useState([]);
 
   const fetchStatusData = async () => {
     try {
@@ -17,10 +18,23 @@ export default function Home() {
     }
   };
 
+  const fetchIncidents = async () => {
+    try {
+      const response = await axios.get("http://localhost:3001/api/incidents");
+      setIncidents(response.data.incidents);
+    } catch (error) {
+      console.error("Error fetching incidents:", error);
+    }
+  };
+
   useEffect(() => {
     fetchStatusData();
-    const interval = setInterval(fetchStatusData, 1000);
-
+    fetchIncidents();
+    const interval = setInterval(() => {
+      fetchStatusData();
+      fetchIncidents();
+    }, 1000);
+  
     return () => clearInterval(interval);
   }, []);
 
@@ -114,6 +128,36 @@ export default function Home() {
             );
           })}
         </div>
+
+        <div className="mt-16">
+          <h2 className="text-2xl font-semibold text-white mb-4">Past Incidents</h2>
+          {incidents.length > 0 ? (
+            incidents.map((incident, index) => (
+              <div key={index} className="mb-8">
+                <p className="text-lg font-bold text-white">{incident.title}</p>
+                <p className="text-sm text-gray-400">
+                  {new Date(incident.createdAt).toLocaleDateString()}
+                </p>
+                <div className="mt-2 space-y-2">
+                  {(incident.comments || []).map((comment, idx) => (
+                    <div
+                      key={idx}
+                      className="p-4 bg-gray-800 rounded-md text-sm text-gray-200"
+                    >
+                      <p>{comment.body}</p>
+                      <p className="text-xs text-gray-400 mt-2">
+                        {new Date(comment.createdAt).toLocaleString()}
+                      </p>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            ))
+          ) : (
+            <p className="text-gray-500">No incidents reported this month.</p>
+          )}
+        </div>
+
       </div>
     </div>
   );
