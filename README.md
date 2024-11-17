@@ -7,20 +7,30 @@
 </p>
 
 <p align="center" width="100%">
-    <img src="./preview.png" alt="ImpAI Example" style="width: 75%; min-width: 300px; display: block; margin: auto;">
+    <img src="./preview.png" alt="ImpAI Example" style="width: 100%; min-width: 300px; display: block; margin: auto;">
 </p>
 
-# Run
+# How to Run
 
-## With docker
+You can run this project either using Docker or natively (with Node.js). Choose the method that suits your environment.
+
+1. **Running with Docker**
+
+The easiest way to run the project is by using Docker Compose. This will handle both the backend and frontend services in one go.
 
 ```bash
 docker compose up -d
 ```
 
-## Natively (with Node.JS)
+This command will start the application in detached mode.
+
+2. **Running Natively (with Node.js)**
+
+If you prefer running the project without Docker, you can set it up locally by following these steps:
 
 ```bash
 cd backend && npm install && cd ../frontend && npm install && cd ..
 node backend/server.js & npm --prefix frontend run dev
 ```
+
+Now, the application should be running locally! Access it through your browser at <http://localhost:3000> (or any other port specified in your setup).
