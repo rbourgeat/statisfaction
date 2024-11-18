@@ -8,3 +8,4 @@ services:
     volumes:
       - ./config.json:/config.json
       - ./data:/data
+    restart: always
