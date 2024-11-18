@@ -3,9 +3,11 @@
 import { useEffect, useState } from "react";
 import axios from "axios";
 
+
 export default function Home() {
   const [statuses, setStatuses] = useState([]);
   const [title, setTitle] = useState("Status Page");
+  const [incidents, setIncidents] = useState([]);
 
   const fetchStatusData = async () => {
     try {
@@ -17,10 +19,23 @@ export default function Home() {
     }
   };
 
+  const fetchIncidents = async () => {
+    try {
+      const response = await axios.get("http://localhost:3001/api/incidents");
+      setIncidents(response.data.incidents);
+    } catch (error) {
+      console.error("Error fetching incidents:", error);
+    }
+  };
+
   useEffect(() => {
     fetchStatusData();
-    const interval = setInterval(fetchStatusData, 1000);
-
+    fetchIncidents();
+    const interval = setInterval(() => {
+      fetchStatusData();
+      fetchIncidents();
+    }, 2000);
+  
     return () => clearInterval(interval);
   }, []);
 
@@ -64,24 +79,50 @@ export default function Home() {
                     status.lastStatus === null
                       ? "bg-gray-500"
                       : status.lastStatus
-                      ? "bg-green-600"
-                      : "bg-red-600"
-                  } z-0 scale-x-90 scale-y-50 skew-y-5 origin-right -translate-x-10`}
+                      ? "bg-green-500"
+                      : "bg-red-500"
+                  } z-0 scale-x-90 scale-y-50 origin-right -translate-x-10`}
                 ></div>
 
-                <div className="relative p-6 bg-white bg-opacity-10 backdrop-blur-xl rounded-lg shadow-lg z-10">
-                  <div className="absolute top-0 right-0 p-2 text-sm text-gray-400">
-                    {averageUptime}% uptime | Ping every {status.pingInterval / 1000}s
+                <div className="relative p-6 bg-white/10 backdrop-blur-xl rounded-lg shadow-xl z-10">
+                  <div className={`absolute font-semibold cursor-pointer top-0 right-0 m-2 text-xs py-1 px-2 leading-none bg-gray-800 rounded-md
+                    ${status.lastStatus === null
+                      ? "text-gray-500"
+                      : status.lastStatus
+                      ? "text-green-500"
+                      : "text-red-500"
+                    }
+                  `}>
+                    <span className="relative inline-flex items-center group">
+                    {averageUptime}% uptime
+                      <div className="absolute left-1/2 bottom-full mb-2 hidden max-w-max w-auto whitespace-nowrap px-4 py-2 text-xs font-medium text-white bg-black rounded-md shadow-md -translate-x-1/2 group-hover:block backdrop-blur-lg bg-opacity-70">
+                        Ping every {status.pingInterval / 1000}s
+                      </div>
+                    </span>
                   </div>
-                  <h2 className="text-2xl font-semibold text-white">{status.name}</h2>
-                  {status.showIp && <p className="text-md text-gray-300">{status.address}</p>}
+                  <h2 className="text-2xl font-semibold text-white flex items-center">
+                    {status.name}
+                    {status.showIp && <a href={status.address}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className={`cursor-pointer m-2 text-xs py-1 px-2 leading-none bg-gray-800 rounded-md
+                      ${status.lastStatus === null
+                        ? "text-gray-500"
+                        : status.lastStatus
+                        ? "text-green-500"
+                        : "text-red-500"
+                      }
+                    `}>
+                      {status.address}
+                    </a>}
+                  </h2>
                   <div className="mt-4 flex space-x-1">
                     {daysToDisplay.map((day, idx) => (
                       <div
                         key={idx}
                         className="group relative w-1 h-8"
                       >
-                        <div className="absolute left-1/2 bottom-full mb-2 hidden w-48 px-4 py-2 text-xs font-medium text-white bg-black rounded-md shadow-md -translate-x-1/2 group-hover:block backdrop-blur-lg bg-opacity-70">
+                        <div className="absolute left-1/2 bottom-full mb-2 hidden max-w-max w-auto whitespace-nowrap px-4 py-2 text-xs font-medium text-white bg-black rounded-md shadow-md -translate-x-1/2 group-hover:block backdrop-blur-lg bg-opacity-70">
                           <p>{day.date}</p>
                           {day.uptime !== null ? (
                             <>
@@ -94,16 +135,16 @@ export default function Home() {
                         </div>
 
                         <div
-                          className={`w-full h-full rounded-md shadow-lg transition-transform duration-300 ease-in-out transform hover:scale-150 ${
+                          className={`w-full h-full cursor-pointer rounded-md shadow-lg transition-transform duration-300 ease-in-out transform hover:scale-150 ${
                             day.uptime === null
-                              ? "bg-gray-500"
+                              ? "bg-gray-400 bg-opacity-50"
                               : day.uptime >= 75
-                              ? "bg-green-500"
+                              ? "bg-green-400"
                               : day.uptime >= 50
-                              ? "bg-yellow-500"
+                              ? "bg-yellow-400"
                               : day.uptime >= 25
-                              ? "bg-orange-500"
-                              : "bg-red-500"
+                              ? "bg-orange-400"
+                              : "bg-red-400"
                           }`}
                         />
                       </div>
@@ -114,6 +155,38 @@ export default function Home() {
             );
           })}
         </div>
+
+        <div className="mt-16">
+          <h2 className="text-2xl font-semibold text-white mb-4">Past Incidents</h2>
+          {incidents.length > 0 ? (
+            incidents.map((incident, index) => (
+              <div key={index} className="mb-8">
+                <a
+                  href={incident.issueUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-lg font-bold hover:no-underline text-red-400 hover:underline"
+                >
+                  {incident.title}
+                </a>
+                <p className="text-sm text-gray-400">
+                {
+                  new Date(incident.createdAt).toLocaleString("en-GB", {
+                    day: "2-digit",
+                    month: "short",
+                    hour: "2-digit",
+                    minute: "2-digit",
+                    hour12: false,
+                  }).replace(",", "").replace(":", "h")
+                }
+                </p>
+              </div>
+            ))
+          ) : (
+            <p className="text-gray-500">No incidents reported this month.</p>
+          )}
+        </div>
+
       </div>
     </div>
   );
