@@ -57,5 +57,6 @@ The configuration for this project is stored in a JSON file, which you can edit 
     - `platform`: The platform used (GitHub or GitLab).
     - `owner`: The repository owner (e.g., GitHub username or organization name).
     - `repo`: The repository name.
+    - `assignee`: A list of usernames or user ids.
     - `authToken`: The authentication token used to access the repository (replace with your actual token).
 </details>

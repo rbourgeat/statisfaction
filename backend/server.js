@@ -92,11 +92,6 @@ function initGitClient() {
 
 initGitClient();
 
-function getCurrentMonth() {
-  const now = new Date();
-  return now.toISOString().slice(0, 7);
-}
-
 async function fetchPastIncidents() {
   const repoOwner = config.repository.owner;
   const repoName = config.repository.repo;
@@ -123,55 +118,31 @@ async function fetchPastIncidents() {
         });
       }
     } else if (config.repository.platform === "gitlab") {
+      const projectId = encodeURIComponent(`${repoOwner}/${repoName}`);
       for (const issueNumber of issueNumbers) {
-        const projectId = encodeURIComponent(`${repoOwner}/${repoName}`);
-        const data = await gitClient.Issues.show(projectId, issueNumber);
-        incidents.push({
-          title: data.title,
-          createdAt: data.created_at,
-          issueUrl: data.web_url,
-        });
+        try {
+          const { data } = await axios.get(
+            `https://gitlab.com/api/v4/projects/${projectId}/issues/${issueNumber}`,
+            {
+              headers: { Authorization: `Bearer ${config.repository.authToken}` },
+            }
+          );
+          incidents.push({
+            title: data.title,
+            createdAt: data.created_at,
+            issueUrl: data.web_url,
+          });
+        } catch (error) {
+          console.error(
+            `Failed to fetch incident for issue #${issueNumber} on GitLab:`,
+            error.message
+          );
+        }
       }
     }
     return incidents;
   } catch (error) {
     console.error("Error fetching incidents:", error.message);
-    return [];
-  }
-}
-
-function filterIncidentsByMonth(issues) {
-  const currentMonth = getCurrentMonth();
-  return issues
-    .filter((issue) => issue.created_at.startsWith(currentMonth))
-    .map((issue) => ({
-      title: issue.title,
-      createdAt: issue.created_at,
-      commentsUrl: issue.comments_url || issue._links.notes,
-    }));
-}
-
-async function fetchIncidentComments(commentsUrl) {
-  try {
-    if (config.configs.githubToken) {
-      const { data } = await axios.get(commentsUrl, {
-        headers: { Authorization: `token ${config.configs.githubToken}` },
-      });
-      return data.map((comment) => ({
-        body: comment.body,
-        createdAt: comment.created_at,
-      }));
-    } else if (config.configs.gitlabToken) {
-      const { data } = await axios.get(commentsUrl, {
-        headers: { "Private-Token": config.configs.gitlabToken },
-      });
-      return data.map((note) => ({
-        body: note.body,
-        createdAt: note.created_at,
-      }));
-    }
-  } catch (error) {
-    console.error("Error fetching comments:", error.message);
     return [];
   }
 }
@@ -288,6 +259,8 @@ async function updateStatuses() {
             downtimeDuration >= incidentReportDelay &&
             !service.incidentReported
           ) {
+            service.incidentReported = true;
+
             console.log(
               `Service "${service.name}" is down for ${downtimeDuration} seconds. Creating incident...`
             );
@@ -295,13 +268,15 @@ async function updateStatuses() {
             try {
               await createIncident(
                 service.name,
-                `The service "${service.name}" has been down since ${new Date(
-                  service.downtimeStart
-                ).toISOString()} (Downtime: ${downtimeDuration} seconds).`
+                `The service "${service.name}" has been down since ${new Date(service.downtimeStart).getDate()} \
+                ${new Date(service.downtimeStart).toLocaleString('default', { month: 'short' })} \
+                ${new Date(service.downtimeStart).getFullYear()} \
+                ${new Date(service.downtimeStart).toLocaleString("en-GB", {hour: "2-digit", minute: "2-digit", hour12: false,}).replace(",", "").replace(":", "h")} \
+                (Downtime: ${downtimeDuration} seconds).`
               );
-              service.incidentReported = true;
             } catch (error) {
               console.error("Failed to report incident:", error.message);
+              service.incidentReported = false;
             }
           }
         } else {
@@ -337,18 +312,71 @@ function resetDailyPings() {
 }
 
 async function createIncident(serviceName, description) {
-  const { platform, owner, repo, authToken } = config.repository;
+  const { platform, owner, repo, authToken, assignee } = config.repository;
   const apiBase =
     platform === "github"
       ? `https://api.github.com/repos/${owner}/${repo}/issues`
       : `https://gitlab.com/api/v4/projects/${encodeURIComponent(`${owner}/${repo}`)}/issues`;
 
+  const assignees = assignee.split(',').map((a) => a.trim()).filter(Boolean);
+
+  const today = getCurrentDay();
+  const service = statuses.find((s) => s.name === serviceName);
+  if (!service) {
+    console.error(`Service "${serviceName}" not found.`);
+    return;
+  }
+
+  const existingIssue = service.dailyHistory.find(
+    (entry) => entry.date === today && entry.issueNumber
+  );
+
+  if (existingIssue) {
+    console.log(
+      `An incident for "${serviceName}" has already been created today (Issue #${existingIssue.issueNumber}).`
+    );
+    return;
+  }
+
   try {
     console.log(`Attempting to create incident for "${serviceName}" on ${platform}.`);
-    const issueData =
-      platform === "github"
-        ? { title: `Incident: ${serviceName}`, body: description }
-        : { title: `Incident: ${serviceName}`, description };
+
+    let issueData;
+    if (platform === "github") {
+      issueData = {
+        title: `Incident: ${serviceName}`,
+        body: description,
+        assignees,
+      };
+    } else if (platform === "gitlab") {
+      const userPromises = assignees.map(async (assignee) => {
+        try {
+          const { data } = await axios.get(
+            `https://gitlab.com/api/v4/users`,
+            {
+              params: { username: assignee },
+              headers: {
+                Authorization: `Bearer ${authToken}`,
+              },
+            }
+          );
+          return data.length > 0 ? data[0].id : null;
+        } catch (error) {
+          console.error(`Failed to fetch user ID for "${assignee}":`, error.message);
+          return null;
+        }
+      });
+
+      const userIds = (await Promise.all(userPromises)).filter((id) => id !== null);
+
+      issueData = {
+        title: `Incident: ${serviceName}`,
+        description,
+        assignee_ids: userIds,
+      };
+    } else {
+      throw new Error(`Unsupported platform: ${platform}`);
+    }
 
     const response = await axios.post(apiBase, issueData, {
       headers: {
@@ -360,15 +388,16 @@ async function createIncident(serviceName, description) {
     const issueNumber =
       platform === "github" ? response.data.number : response.data.iid;
 
-    const today = getCurrentDay();
-    const service = statuses.find((s) => s.name === serviceName);
-    if (service) {
-      const todayEntry = service.dailyHistory.find((entry) => entry.date === today);
-      if (todayEntry) {
-        todayEntry.issueNumber = issueNumber;
-      } else {
-        service.dailyHistory.push({ date: today, uptime: 0, downtimeHours: 0, issueNumber });
-      }
+    const todayEntry = service.dailyHistory.find((entry) => entry.date === today);
+    if (todayEntry) {
+      todayEntry.issueNumber = issueNumber;
+    } else {
+      service.dailyHistory.push({
+        date: today,
+        uptime: 0,
+        downtimeHours: 0,
+        issueNumber,
+      });
     }
 
     saveStatusData(statuses);
