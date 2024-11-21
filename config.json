@@ -4,9 +4,25 @@
     "incidentReportDelay": 60
   },
   "services": [
-    { "name": "Apple", "address": "https://apple.com", "pingInterval": 3, "showIp": true },
-    { "name": "Google", "address": "8.8.8.8", "pingInterval": 5, "showIp": true },
-    { "name": "OpenAI", "address": "http://localhost:52638", "pingInterval": 5, "showIp": false }
+    { 
+      "name": "Apple",
+      "address": "https://apple.com",
+      "pingInterval": 3, 
+      "showIp": true
+    },
+    { 
+      "name": "Google",
+      "address": "8.8.8.8",
+      "pingInterval": 5,
+      "showIp": true 
+    },
+    {
+      "name": "OpenAI",
+      "address": "http://localhost:52638", 
+      "pingInterval": 5, 
+      "showIp": false,
+      "expectedStatusCode": 200
+    }
   ],
   "repository": {
     "platform": "github",

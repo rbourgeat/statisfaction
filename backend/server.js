@@ -220,8 +220,10 @@ function saveStatusData(stats) {
 async function pingService(service) {
   try {
     if (service.address.startsWith("http")) {
+      const expectedStatusCode = service.expectedStatusCode || 200;
       const response = await axios.get(service.address, { timeout: 5000 });
-      return response.status === 200;
+
+      return response.status === expectedStatusCode;
     } else {
       const res = await ping.promise.probe(service.address, {
         timeout: 5,
@@ -229,7 +231,9 @@ async function pingService(service) {
       return res.alive;
     }
   } catch (error) {
-    console.error(`Error pinging ${service.address}:`, error.message);
+    console.error(
+      `Error pinging ${service.address}: ${error.message}`
+    );
     return false;
   }
 }
