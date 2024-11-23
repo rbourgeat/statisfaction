@@ -435,7 +435,7 @@ app.get("/api/incidents", async (req, res) => {
 });
 
 app.get("/api/status", (req, res) => {
-  res.json({ title: config.configs.title, statuses });
+  res.json({ title: config.configs.title, description: config.configs.description, statuses });
 });
 
 app.listen(PORT, () => {

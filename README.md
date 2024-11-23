@@ -47,16 +47,18 @@ The configuration for this project is stored in a JSON file, which you can edit 
 
 - `configs`: This section includes general settings for the status page.
     - `title`: The title of your status page.
+    - `description`: The text under the title.
     - `incidentReportDelay`: The time delay (in seconds) before an incident report is triggered.
 - `services`: This section lists the services being monitored.
     - `name`: The name of the service.
     - `address`: The address or URL of the service.
     - `pingInterval`: The interval (in seconds) at which to check the service's availability.
     - `showIp`: Whether or not to show the IP address of the service.
+    - `expectedStatusCode`: Set the expected status code (default: 200).
 - `repository`: Contains the repository information if you are linking to a GitHub or GitLab project.
     - `platform`: The platform used (GitHub or GitLab).
     - `owner`: The repository owner (e.g., GitHub username or organization name).
     - `repo`: The repository name.
-    - `assignee`: A list of usernames or user ids.
-    - `authToken`: The authentication token used to access the repository (replace with your actual token).
+    - `assignee`: A list of usernames or userids, which will be assigned to the result in the event of an outage.
+    - `authToken`: The authentication token used to access the repository (replace with your (or bot) token).
 </details>

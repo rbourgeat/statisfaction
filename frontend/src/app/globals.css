@@ -5,3 +5,39 @@
 :root {
     font-family: "Helvetica Now Display", ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, "Noto Sans", sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji";
 }
+
+body {
+    background: radial-gradient(ellipse at top, #1b2735 0%, #090a0f 100%);
+}
+
+.snowfall {
+    position: absolute;
+    top: -10px;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    pointer-events: none;
+    z-index: 9999;
+}
+
+.snowflake {
+    position: absolute;
+    width: 10px;
+    height: 10px;
+    background: white;
+    border-radius: 50%;
+    opacity: 0;
+    z-index: 9999;filter: drop-shadow(0 0 10px white);
+    animation: fall linear infinite;
+}
+
+@keyframes fall {
+    0% {
+        opacity: 0.5;
+        transform: translate(0, -10px);
+    }
+    100% {
+        opacity: 1;
+        transform: translate(var(--x-end), 100vh);
+    }
+}

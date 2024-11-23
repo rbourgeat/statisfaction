@@ -1,6 +1,7 @@
 {
   "configs": {
     "title": "Status Page",
+    "description": "Check the status of our services below.",
     "incidentReportDelay": 60
   },
   "services": [
