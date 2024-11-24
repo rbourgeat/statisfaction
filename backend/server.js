@@ -106,31 +106,56 @@ async function fetchPastIncidents() {
     const incidents = [];
     if (config.repository.platform === "github") {
       for (const issueNumber of issueNumbers) {
-        const { data } = await gitClient.issues.get({
+        const { data: issueData } = await gitClient.issues.get({
           owner: repoOwner,
           repo: repoName,
           issue_number: issueNumber,
         });
+
+        const { data: commentsData } = await gitClient.issues.listComments({
+          owner: repoOwner,
+          repo: repoName,
+          issue_number: issueNumber,
+        });
+
         incidents.push({
-          title: data.title,
-          createdAt: data.created_at,
-          issueUrl: data.html_url,
+          title: issueData.title,
+          createdAt: issueData.created_at,
+          issueUrl: issueData.html_url,
+          comments: commentsData.map((comment) => ({
+            body: comment.body,
+            createdAt: comment.created_at,
+            author: comment.user.login,
+          })),
         });
       }
     } else if (config.repository.platform === "gitlab") {
       const projectId = encodeURIComponent(`${repoOwner}/${repoName}`);
       for (const issueNumber of issueNumbers) {
         try {
-          const { data } = await axios.get(
+          const { data: issueData } = await axios.get(
             `https://gitlab.com/api/v4/projects/${projectId}/issues/${issueNumber}`,
             {
               headers: { Authorization: `Bearer ${config.repository.authToken}` },
             }
           );
+
+          const { data: commentsData } = await axios.get(
+            `https://gitlab.com/api/v4/projects/${projectId}/issues/${issueNumber}/notes`,
+            {
+              headers: { Authorization: `Bearer ${config.repository.authToken}` },
+            }
+          );
+
           incidents.push({
-            title: data.title,
-            createdAt: data.created_at,
-            issueUrl: data.web_url,
+            title: issueData.title,
+            createdAt: issueData.created_at,
+            issueUrl: issueData.web_url,
+            comments: commentsData.map((comment) => ({
+              body: comment.body,
+              createdAt: comment.created_at,
+              author: comment.author.name,
+            })),
           });
         } catch (error) {
           console.error(
@@ -422,6 +447,7 @@ fs.watch(CONFIG_FILE, () => {
     const newConfig = loadConfig();
     statuses = mergeStatusData(statuses, newConfig.services);
     config = newConfig;
+    saveStatusData(statuses);
     console.log("Configuration reloaded successfully.");
   } catch (error) {
     console.error("Failed to reload configuration:", error.message);
@@ -439,17 +465,20 @@ app.get("/api/incidents", async (req, res) => {
 });
 
 app.get("/api/status", (req, res) => {
-  const filteredStatuses = statuses.map((service) => {
-    const { showIp, address, responseTime, ...rest } = service;
+  const optimizedStatuses = statuses.map((service) => {
+    const { showIp, address, responseTime, dailyHistory, ...rest } = service;
+
+    const optimizedDailyHistory = dailyHistory.slice(-90);
+
     return showIp
-      ? { ...rest, address, responseTime }
-      : { ...rest, responseTime };
+      ? { ...rest, address, responseTime, dailyHistory: optimizedDailyHistory }
+      : { ...rest, responseTime, dailyHistory: optimizedDailyHistory };
   });
 
   res.json({
     title: config.configs.title,
     description: config.configs.description,
-    statuses: filteredStatuses,
+    statuses: optimizedStatuses,
   });
 });
 

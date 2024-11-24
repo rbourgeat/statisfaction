@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { marked } from "marked";
 import axios from "axios";
 import {
   FaRegCircleUp,
@@ -8,14 +9,19 @@ import {
   FaRegCircleCheck,
   FaRegCircleXmark,
   FaRegCircleQuestion,
-  FaRegCalendarXmark,
   FaRegFaceFrown,
   FaRegFaceLaughBeam,
   FaRegFaceDizzy,
   FaRegFaceSadTear,
   FaHourglassHalf,
   FaLink,
-  FaWifi
+  FaWifi,
+  FaCheck,
+  FaEllipsis,
+  FaEye,
+  FaRegBell,
+  FaWrench,
+  FaRegClock
 } from "react-icons/fa6";
 
 export default function Home() {
@@ -71,6 +77,33 @@ export default function Home() {
     return () => clearInterval(interval);
   }, []);
 
+  const getBgColorIncident = (keyword) => {
+    if (keyword.includes("Investigating")) return "bg-red-500";
+    if (keyword.includes("Identified")) return "bg-orange-500";
+    if (keyword.includes("Update")) return "bg-yellow-500";
+    if (keyword.includes("Monitoring")) return "bg-blue-400";
+    if (keyword.includes("Resolved")) return "bg-green-400";
+    return "bg-gray-500";
+  };
+
+  const getBorderColorIncident = (keyword) => {
+    if (keyword.includes("Investigating")) return "border-red-500";
+    if (keyword.includes("Identified")) return "border-orange-500";
+    if (keyword.includes("Update")) return "border-yellow-500";
+    if (keyword.includes("Monitoring")) return "border-blue-500";
+    if (keyword.includes("Resolved")) return "border-green-500";
+    return "border-gray-500";
+  };
+
+  const getIconIncident = (keyword) => {
+    if (keyword.includes("Investigating")) return <FaEye />;
+    if (keyword.includes("Identified")) return <FaWrench />;
+    if (keyword.includes("Update")) return <FaRegBell />;
+    if (keyword.includes("Monitoring")) return <FaRegClock />;
+    if (keyword.includes("Resolved")) return <FaCheck />;
+    return <FaEllipsis />;
+  };
+
   return (
     <div className="min-h-screen  text-white flex flex-col items-center justify-center">
       {isWinter && <SnowEffect />}
@@ -116,7 +149,7 @@ export default function Home() {
                         {status.lastStatus === null ? (
                           <FaRegCircleQuestion className="text-gray-500" />
                         ) : status.lastStatus ? (
-                          <FaRegCircleCheck className="text-green-500" />
+                          <FaRegCircleCheck className="text-green-400" />
                         ) : (
                           <FaRegCircleXmark className="text-red-500" />
                         )}
@@ -165,7 +198,7 @@ export default function Home() {
                           ? "text-yellow-400"
                           : averageUptime >= 25
                           ? "text-orange-400"
-                          : "text-red-400"
+                          : "text-red-500"
                         }`}
                     >
                       <span className="relative items-center group flex justify-center">
@@ -207,17 +240,35 @@ export default function Home() {
                                     <span>Partial Outage</span>
                                   </p>
                                 ) : (
-                                  <p className="flex items-center space-x-2 text-red-400">
+                                  <p className="flex items-center space-x-2 text-red-500">
                                     <FaRegFaceDizzy className="text-lg" />
                                     <span>Major Outage</span>
                                   </p>
                                 )}
                               </div>
-                              <p className="flex items-center space-x-2">
+                              <p className={`flex items-center space-x-2 ${day.uptime.toFixed(2) === null
+                                ? "text-gray-400"
+                                : day.uptime.toFixed(2) >= 75
+                                ? "text-green-400"
+                                : day.uptime.toFixed(2) >= 50
+                                ? "text-yellow-400"
+                                : day.uptime.toFixed(2) >= 25
+                                ? "text-orange-400"
+                                : "text-red-500"
+                              }`}>
                                 <FaRegCircleUp />
                                 <span>Uptime: {day.uptime.toFixed(2)}%</span>
                               </p>
-                              <p className="flex items-center space-x-2">
+                              <p className={`flex items-center space-x-2 ${day.downtimeHours?.toFixed(1) === null
+                                ? "text-gray-400"
+                                : day.downtimeHours?.toFixed(1) == 0
+                                ? "text-green-400"
+                                : day.downtimeHours?.toFixed(1) <= 0.1
+                                ? "text-yellow-400"
+                                : day.downtimeHours?.toFixed(1) <= 0.3
+                                ? "text-orange-400"
+                                : "text-red-500"
+                              }`}>
                                 <FaRegCircleDown />
                                 <span>Downtime: {day.downtimeHours?.toFixed(1) || 0}h</span>
                               </p>
@@ -240,7 +291,7 @@ export default function Home() {
                               ? "bg-yellow-400"
                               : day.uptime >= 25
                               ? "bg-orange-400"
-                              : "bg-red-400"
+                              : "bg-red-500"
                           }`}
                         />
                       </div>
@@ -255,26 +306,65 @@ export default function Home() {
 
       <h2 className="m-16 text-2xl font-semibold text-white mb-4">Past Incidents</h2>
       <div className="m-4 p-4 w-[60%] rounded-xl backdrop-blur-2xl border border-[#727DA1]/20 bg-[#171824]/80">
-        {incidents.length > 0 ? (
-          incidents.map((incident, index) => (
-            <div key={index} className="m-4 pl-8">
-              <a
-                href={incident.issueUrl}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-lg font-bold hover:no-underline text-red-400 hover:underline flex items-center space-x-2"
-              >
-                <FaRegCalendarXmark />
-                <span>{incident.title}</span>
-              </a>
-              <p className="text-sm text-gray-400">
-              {new Date(incident.createdAt).getDate()} {new Date(incident.createdAt).toLocaleString('default', { month: 'short' })} {new Date(incident.createdAt).getFullYear()} {new Date(incident.createdAt).toLocaleString("en-GB", {hour: "2-digit", minute: "2-digit", hour12: false,}).replace(",", "").replace(":", "h")}
-              </p>
-            </div>
-          ))
-        ) : (
-          <p className="text-gray-500">No incidents reported this month.</p>
-        )}
+        <div className="container">
+          {incidents.length > 0 ? (
+            incidents.map((incident, index) => (
+              <div key={index} className="mb-8">
+                <h2 className="text-2xl font-semibold mb-4 text-red-500">
+                  <a
+                    href={incident.issueUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="no-underline"
+                  >
+                  {incident.title}
+                  </a>
+                <p className="text-sm font-normal text-gray-500">
+                  {new Date(incident.createdAt).getDate()} {new Date(incident.createdAt).toLocaleString('default', { month: 'short' })} {new Date(incident.createdAt).getFullYear()} {new Date(incident.createdAt).toLocaleString("en-GB", {hour: "2-digit", minute: "2-digit", hour12: false,}).replace(",", "").replace(":", "h")}
+                </p>
+                </h2>
+                <div className="flex flex-col md:grid grid-cols-12 text-gray-50">
+                  {incident.comments.length > 0 ? (
+                    incident.comments.map((comment, commentIndex) => {
+                      const bgClass = getBgColorIncident(comment.body);
+                      const borderClass = getBorderColorIncident(comment.body);
+                      return (
+                        <div key={commentIndex} className="flex md:contents">
+                          <div className="col-start-1 col-end-2 mr-10 md:mx-auto relative">
+                            <div className="h-full w-6 flex items-center justify-center">
+                              <div className={`h-full w-1 ${bgClass} pointer-events-none`}></div>
+                            </div>
+                            <div className={`w-6 h-6 absolute text-[#171824]/80 top-1/2 -mt-3 rounded-full ${bgClass} shadow-xl text-center inline-flex items-center justify-center`}>
+                              {getIconIncident(comment.body)}
+                            </div>
+                          </div>
+                          <div className={`rounded-xl backdrop-blur-2xl border border-solid ${borderClass} col-start-2 col-end-12 p-4 rounded-xl my-4 mr-auto shadow-md w-full`}>
+                            <h3 className="text-sm mb-1">
+                              <div dangerouslySetInnerHTML={{ __html: marked(comment.body) }} />
+                            </h3>
+                            <p className="text-sm mb-1 text-gray-400">
+                              @{comment.author} - {" "}
+                              <span className="text-gray-500">
+                                {new Date(comment.createdAt).toLocaleString()}
+                              </span>
+                            </p>
+                          </div>
+                        </div>
+                      );
+                    })
+                  ) : (
+                    <p className="text-gray-500 text-sm col-start-2 col-end-10">
+                      The incident has been reported, and our team will begin investigation shortly. We will keep you updated.
+                    </p>
+                  )}
+                </div>
+              </div>
+            ))
+          ) : (
+            <p className="text-center text-gray-500">No incidents reported this month.</p>
+          )}
+        </div>
+
       </div>
     </div>
   );
