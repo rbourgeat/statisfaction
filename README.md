@@ -12,53 +12,96 @@
 
 ## How to Run
 
-You can run this project either using Docker or natively (with Node.js). Choose the method that suits your environment.
+You can run this project either using Docker or natively (with Node.js). Follow the instructions below to get started.
 
 1. **Running with Docker**
 
-The easiest way to run the project is by using Docker Compose. This will handle both the backend and frontend services in one go.
+**Steps:**
+
+- Clone the repository and navigate to the project directory.
+
+- Run the following command to start the services:
 
 ```bash
 docker compose up -d
 ```
 
-This command will start the application in detached mode.
+**Building the Docker Image Locally:**
+
+If you want to build the Docker image locally instead of pulling from a registry, use the following commands:
+
+```bash
+docker compose build
+docker compose up -d
+```
 
 2. **Running Natively (with Node.js)**
 
-If you prefer running the project without Docker, you can set it up locally by following these steps:
+To run the project without Docker, you can set it up locally:
 
 ```bash
 cd backend && npm install && cd ../frontend && npm install && cd ..
 node backend/server.js & npm --prefix frontend run dev
 ```
 
-Now, the application should be running locally! Access it through your browser at <http://localhost:3000> (or any other port specified in your setup).
+Access the application through your browser at <http://localhost:3000> (or another port, depending on your setup).
 
 ## Editing the Config File
 
-The configuration for this project is stored in a JSON file, which you can edit to customize the behavior of the service monitoring. Here's an example of the [default config](https://github.com/rbourgeat/statisfaction/blob/main/config.json).
+The configuration for this project is stored in a JSON file. You can customize the behavior of the service monitoring by editing the [config.json](https://github.com/rbourgeat/statisfaction/blob/main/config.json).
 
 > [!NOTE]
-> The application will automatically detect the changes and apply them in real time, allowing you to update the status page on the fly!
+> Changes to the config file are applied in real-time, so the status page updates instantly.
 
 <details>
 <summary>Breakdown of the Config File</summary>
 
-- `configs`: This section includes general settings for the status page.
+- `configs`:
     - `title`: The title of your status page.
-    - `description`: The text under the title.
+    - `description`: A brief description displayed under the title.
     - `incidentReportDelay`: The time delay (in seconds) before an incident report is triggered.
-- `services`: This section lists the services being monitored.
-    - `name`: The name of the service.
-    - `address`: The address or URL of the service.
-    - `pingInterval`: The interval (in seconds) at which to check the service's availability.
+- `services`:
+    - `name`: The name of the monitored service.
+    - `address`: The IP or URL of the service.
+    - `pingInterval`: Frequency (in seconds) for checking service availability.
     - `showIp`: Whether or not to show the IP address of the service.
     - `expectedStatusCode`: Set the expected status code (default: 200).
-- `repository`: Contains the repository information if you are linking to a GitHub or GitLab project.
+- `repository`:
     - `platform`: The platform used (GitHub or GitLab).
     - `owner`: The repository owner (e.g., GitHub username or organization name).
-    - `repo`: The repository name.
-    - `assignee`: A list of usernames or userids, which will be assigned to the result in the event of an outage.
-    - `authToken`: The authentication token used to access the repository (replace with your (or bot) token).
+    - `repo`: Repository name.
+    - `assignee`: Usernames to assign to incident reports.
+    - `authToken`: Authentication token (replace with your token).
 </details>
+
+## Incidents
+
+<p align="center" width="100%">
+    <img src="./preview-2.png" alt="ImpAI Example" style="width: 100%; min-width: 300px; display: block; margin: auto;">
+</p>
+
+### Features
+
+- **Automatic Incident Creation**: Incidents are automatically opened as issues in your GitLab or GitHub repository.
+
+- **Custom Assignee**: You can configure the assignee for issues by editing the [config.json](https://github.com/rbourgeat/statisfaction/blob/main/config.json).
+
+- **Timeline Integration**: Each comment on an issue is displayed (in real time) as an event in the incident timeline on the status page.
+
+- **Keyword-Based Styling**: Specific keywords in issue comments trigger custom styles in the incident timeline, making it easy to track progress.
+
+### Keyword Styling
+
+To customize the appearance of comments on the status page timeline, include one of the following keywords in your comment:
+
+- Investigating
+
+- Identified
+
+- Update
+
+- Monitoring
+
+- Resolved
+
+Each keyword corresponds to a unique style, helping users quickly identify the current status of an incident.

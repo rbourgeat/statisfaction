@@ -147,11 +147,14 @@ async function fetchPastIncidents() {
             }
           );
 
+          const userComments = commentsData.filter((comment) => !comment.system);
+          userComments.sort((a, b) => new Date(a.created_at) - new Date(b.created_at));
+
           incidents.push({
             title: issueData.title,
             createdAt: issueData.created_at,
             issueUrl: issueData.web_url,
-            comments: commentsData.map((comment) => ({
+            comments: userComments.map((comment) => ({
               body: comment.body,
               createdAt: comment.created_at,
               author: comment.author.name,
