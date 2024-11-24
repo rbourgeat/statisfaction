@@ -219,22 +219,25 @@ function saveStatusData(stats) {
 
 async function pingService(service) {
   try {
+    const startTime = Date.now();
+
     if (service.address.startsWith("http")) {
       const expectedStatusCode = service.expectedStatusCode || 200;
       const response = await axios.get(service.address, { timeout: 5000 });
 
-      return response.status === expectedStatusCode;
+      const responseTime = Date.now() - startTime;
+      return { isOnline: response.status === expectedStatusCode, responseTime };
     } else {
       const res = await ping.promise.probe(service.address, {
         timeout: 5,
       });
-      return res.alive;
+
+      const responseTime = res.time ? parseInt(res.time) : null;
+      return { isOnline: res.alive, responseTime };
     }
   } catch (error) {
-    console.error(
-      `Error pinging ${service.address}: ${error.message}`
-    );
-    return false;
+    console.error(`Error pinging ${service.address}: ${error.message}`);
+    return { isOnline: false, responseTime: null };
   }
 }
 
@@ -250,7 +253,7 @@ async function updateStatuses() {
   const updatedStatuses = await Promise.all(
     statuses.map(async (service) => {
       if (now - service.lastPing >= service.pingInterval) {
-        const isOnline = await pingService(service);
+        const { isOnline, responseTime } = await pingService(service);
 
         if (!isOnline) {
           if (!service.downtimeStart) {
@@ -272,10 +275,10 @@ async function updateStatuses() {
             try {
               await createIncident(
                 service.name,
-                `The service "${service.name}" has been down since ${new Date(service.downtimeStart).getDate()} \
+                `The service "${service.name}" has been down since **${new Date(service.downtimeStart).getDate()} \
                 ${new Date(service.downtimeStart).toLocaleString('default', { month: 'short' })} \
                 ${new Date(service.downtimeStart).getFullYear()} \
-                ${new Date(service.downtimeStart).toLocaleString("en-GB", {hour: "2-digit", minute: "2-digit", hour12: false,}).replace(",", "").replace(":", "h")} \
+                ${new Date(service.downtimeStart).toLocaleString("en-GB", {hour: "2-digit", minute: "2-digit", hour12: false,}).replace(",", "").replace(":", "h")}** \
                 (Downtime: ${downtimeDuration} seconds).`
               );
             } catch (error) {
@@ -290,6 +293,7 @@ async function updateStatuses() {
 
         service.lastPing = now;
         service.lastStatus = isOnline;
+        service.responseTime = responseTime;
 
         service.currentDayPings.total += 1;
         if (isOnline) service.currentDayPings.online += 1;
@@ -435,7 +439,18 @@ app.get("/api/incidents", async (req, res) => {
 });
 
 app.get("/api/status", (req, res) => {
-  res.json({ title: config.configs.title, description: config.configs.description, statuses });
+  const filteredStatuses = statuses.map((service) => {
+    const { showIp, address, responseTime, ...rest } = service;
+    return showIp
+      ? { ...rest, address, responseTime }
+      : { ...rest, responseTime };
+  });
+
+  res.json({
+    title: config.configs.title,
+    description: config.configs.description,
+    statuses: filteredStatuses,
+  });
 });
 
 app.listen(PORT, () => {

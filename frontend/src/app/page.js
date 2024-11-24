@@ -3,20 +3,20 @@
 import { useEffect, useState } from "react";
 import axios from "axios";
 import {
+  FaRegCircleUp,
+  FaRegCircleDown,
   FaRegCircleCheck,
-  FaFaceFrown,
-  FaFaceLaughBeam,
-  FaFaceDizzy,
-  FaFaceSadCry,
-  FaHourglassHalf,
-  FaCircleUp,
-  FaCircleDown,
   FaRegCircleXmark,
   FaRegCircleQuestion,
-  FaRegCalendarXmark
+  FaRegCalendarXmark,
+  FaRegFaceFrown,
+  FaRegFaceLaughBeam,
+  FaRegFaceDizzy,
+  FaRegFaceSadTear,
+  FaHourglassHalf,
+  FaLink,
+  FaWifi
 } from "react-icons/fa6";
-
-import SnowEffect from "./components/SnowEffect";
 
 export default function Home() {
   const [statuses, setStatuses] = useState([]);
@@ -59,7 +59,6 @@ export default function Home() {
   useEffect(() => {
     const checkWinter = () => {
       const month = new Date().getMonth();
-      const minutes = new Date().getMinutes();
       setIsWinter(month === 0); // Dec
     };
     
@@ -122,7 +121,38 @@ export default function Home() {
                           <FaRegCircleXmark className="text-red-500" />
                         )}
                       </div>
-                      {status.name}
+                      <span className="relative items-center group flex justify-center cursor-pointer">
+                        <h2 className="text-center">
+                        {status.address ? (
+                          <a
+                            href={status.address}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="text-white no-underline hover:no-underline"
+                          >
+                            {status.name}
+                          </a>
+                        ) : (
+                          <span>{status.name}</span>
+                        )}
+                        </h2>
+                        {(status.address || status.responseTime) && (
+                          <div className="absolute left-1/2 mb-2 hidden max-w-max w-auto whitespace-nowrap px-4 py-2 text-xs font-medium text-white translate-x-1/4 group-hover:block rounded-xl backdrop-blur-2xl border border-[#727DA1]/20 bg-[#171824]/80">
+                            {status.address && (
+                              <p className="flex items-center space-x-2 text-gray-400">
+                                <FaLink />
+                                <span>{status.address}</span>
+                              </p>
+                            )}
+                            {status.responseTime && (
+                              <p className="flex items-center space-x-2 text-gray-400">
+                                <FaWifi />
+                                <span>{status.responseTime}ms</span>
+                              </p>
+                            )}
+                          </div>
+                        )}
+                      </span>
                     </h2>
 
                     <div
@@ -163,33 +193,33 @@ export default function Home() {
                               <div className="border-b border-gray-700 pb-2 mb-2 text-center font-bold">
                                 {day.uptime >= 75 ? (
                                   <p className="flex items-center space-x-2 text-green-400">
-                                    <FaFaceLaughBeam className="text-lg" />
+                                    <FaRegFaceLaughBeam className="text-lg" />
                                     <span>Operational</span>
                                   </p>
                                 ) : day.uptime >= 50 ? (
                                   <p className="flex items-center space-x-2 text-yellow-400">
-                                    <FaFaceFrown className="text-lg" />
+                                    <FaRegFaceFrown className="text-lg" />
                                     <span>Degraded</span>
                                   </p>
                                 ) : day.uptime >= 25 ? (
                                   <p className="flex items-center space-x-2 text-orange-400">
-                                    <FaFaceSadCry className="text-lg" />
+                                    <FaRegFaceSadTear className="text-lg" />
                                     <span>Partial Outage</span>
                                   </p>
                                 ) : (
                                   <p className="flex items-center space-x-2 text-red-400">
-                                    <FaFaceDizzy className="text-lg" />
+                                    <FaRegFaceDizzy className="text-lg" />
                                     <span>Major Outage</span>
                                   </p>
                                 )}
                               </div>
                               <p className="flex items-center space-x-2">
-                                <FaCircleUp />
+                                <FaRegCircleUp />
                                 <span>Uptime: {day.uptime.toFixed(2)}%</span>
                               </p>
                               <p className="flex items-center space-x-2">
-                                <FaCircleDown />
-                                <span>Downtime: {day.downtimeHours?.toFixed(1) || 0} h</span>
+                                <FaRegCircleDown />
+                                <span>Downtime: {day.downtimeHours?.toFixed(1) || 0}h</span>
                               </p>
                             </div>
                           ) : (
