@@ -74,19 +74,23 @@ let gitClient;
 
 function initGitClient() {
   const repoConfig = config.repository;
-  
+
   if (repoConfig && repoConfig.authToken) {
-    if (repoConfig.platform === 'github') {
+    if (repoConfig.platform === "github") {
       gitClient = new Octokit({ auth: repoConfig.authToken });
-      console.log('GitHub client initialized');
-    } else if (repoConfig.platform === 'gitlab') {
-      gitClient = new Gitlab({ token: repoConfig.authToken });
-      console.log('GitLab client initialized');
+      console.log("GitHub client initialized");
+    } else if (repoConfig.platform === "gitlab") {
+      const gitlabUrl = repoConfig.url || "https://gitlab.com";
+      gitClient = new Gitlab({ 
+        token: repoConfig.authToken, 
+        host: gitlabUrl 
+      });
+      console.log(`GitLab client initialized with URL: ${gitlabUrl}`);
     } else {
-      console.error('Unsupported platform:', repoConfig.platform);
+      console.error("Unsupported platform:", repoConfig.platform);
     }
   } else {
-    console.error('No repository authentication token provided in the config.');
+    console.error("No repository authentication token provided in the config.");
   }
 }
 
@@ -130,26 +134,27 @@ async function fetchPastIncidents() {
         });
       }
     } else if (config.repository.platform === "gitlab") {
+      const gitlabUrl = config.repository.url || "https://gitlab.com";
       const projectId = encodeURIComponent(`${repoOwner}/${repoName}`);
       for (const issueNumber of issueNumbers) {
         try {
           const { data: issueData } = await axios.get(
-            `https://gitlab.com/api/v4/projects/${projectId}/issues/${issueNumber}`,
+            `${gitlabUrl}/api/v4/projects/${projectId}/issues/${issueNumber}`,
             {
               headers: { Authorization: `Bearer ${config.repository.authToken}` },
             }
           );
-
+    
           const { data: commentsData } = await axios.get(
-            `https://gitlab.com/api/v4/projects/${projectId}/issues/${issueNumber}/notes`,
+            `${gitlabUrl}/api/v4/projects/${projectId}/issues/${issueNumber}/notes`,
             {
               headers: { Authorization: `Bearer ${config.repository.authToken}` },
             }
           );
-
+    
           const userComments = commentsData.filter((comment) => !comment.system);
           userComments.sort((a, b) => new Date(a.created_at) - new Date(b.created_at));
-
+    
           incidents.push({
             title: issueData.title,
             createdAt: issueData.created_at,
@@ -350,9 +355,11 @@ function resetDailyPings() {
 async function createIncident(serviceName, description) {
   const { platform, owner, repo, authToken, assignee } = config.repository;
   const apiBase =
-    platform === "github"
-      ? `https://api.github.com/repos/${owner}/${repo}/issues`
-      : `https://gitlab.com/api/v4/projects/${encodeURIComponent(`${owner}/${repo}`)}/issues`;
+  platform === "github"
+    ? `https://api.github.com/repos/${owner}/${repo}/issues`
+    : `${config.repository.url || "https://gitlab.com"}/api/v4/projects/${encodeURIComponent(
+        `${owner}/${repo}`
+      )}/issues`;
 
   const assignees = assignee.split(',').map((a) => a.trim()).filter(Boolean);
 
@@ -388,7 +395,7 @@ async function createIncident(serviceName, description) {
       const userPromises = assignees.map(async (assignee) => {
         try {
           const { data } = await axios.get(
-            `https://gitlab.com/api/v4/users`,
+            `${config.repository.url || "https://gitlab.com"}/api/v4/users`,
             {
               params: { username: assignee },
               headers: {
