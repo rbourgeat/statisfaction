@@ -70,6 +70,7 @@ The configuration for this project is stored in a JSON file. You can customize t
     - `platform`: The platform used (GitHub or GitLab).
     - `owner`: The repository owner (e.g., GitHub username or organization name).
     - `repo`: Repository name.
+    - `url`: Optionally specify a custom GitLab URL.
     - `assignee`: Usernames to assign to incident reports.
     - `authToken`: Authentication token (replace with your token).
 </details>
