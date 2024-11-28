@@ -3,8 +3,7 @@ services:
     image: ghcr.io/rbourgeat/statisfaction:latest
     build: .
     ports:
-      - "3000:3000"  # Frontend
-      - "3001:3001"  # Backend
+      - "3000:3000"
     volumes:
       - ./config.json:/config.json
       - ./data:/data

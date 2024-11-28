@@ -33,7 +33,7 @@ export default function Home() {
 
   const fetchStatusData = async () => {
     try {
-      const response = await axios.get("http://localhost:3001/api/status");
+      const response = await axios.get("/api/status");
       setTitle(response.data.title);
       setDescription(response.data.description);
       setStatuses(response.data.statuses);
@@ -44,7 +44,7 @@ export default function Home() {
 
   const fetchIncidents = async () => {
     try {
-      const response = await axios.get("http://localhost:3001/api/incidents");
+      const response = await axios.get("/api/incidents");
       setIncidents(response.data.incidents);
     } catch (error) {
       console.error("Error fetching incidents:", error);

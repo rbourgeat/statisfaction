@@ -14,12 +14,13 @@ const __dirname = path.dirname(__filename);
 
 
 const app = express();
-const PORT = 3001;
+const PORT = 3000;
 const DATA_FOLDER = path.join(__dirname, "../data");
 const DATA_FILE = path.join(DATA_FOLDER, "statusData.json");
 const CONFIG_FILE = path.join(__dirname, "../config.json");
 
 app.use(cors());
+app.use(express.static(path.join(__dirname, "frontend/out")));
 
 if (!fs.existsSync(DATA_FOLDER)) {
   fs.mkdirSync(DATA_FOLDER, { recursive: true });
@@ -490,6 +491,10 @@ app.get("/api/status", (req, res) => {
     description: config.configs.description,
     statuses: optimizedStatuses,
   });
+});
+
+app.get("*", (req, res) => {
+  res.sendFile(path.join(__dirname, "frontend/out", "index.html"));
 });
 
 app.listen(PORT, () => {
