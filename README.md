@@ -66,7 +66,7 @@ The configuration for this project is stored in a JSON file. You can customize t
     - `pingInterval`: Frequency (in seconds) for checking service availability.
     - `showIp`: Whether or not to show the IP address of the service.
     - `expectedStatusCode`: Set the expected status code (default: 200).
-- `repository`:
+    - `verifySSL`: Boolean to specify whether the SSL certificate should be verified when accessing HTTPS services.
     - `platform`: The platform used (GitHub or GitLab).
     - `owner`: The repository owner (e.g., GitHub username or organization name).
     - `repo`: Repository name.

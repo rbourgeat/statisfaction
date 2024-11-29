@@ -1,6 +1,7 @@
 import { fileURLToPath } from 'url';
 import express from 'express';
 import axios from 'axios';
+import https from 'https';
 import path from 'path';
 import ping from 'ping';
 import cors from 'cors';
@@ -56,6 +57,7 @@ function loadStatusData() {
       const loadedData = JSON.parse(fs.readFileSync(DATA_FILE, "utf-8"));
       return loadedData.map((service) => ({
         ...service,
+        verifySSL: service.verifySSL !== undefined ? service.verifySSL : true,
         dailyHistory: service.dailyHistory || [],
         currentDayPings: service.currentDayPings || { online: 0, total: 0 },
         incidentReported: service.incidentReported || false,
@@ -190,6 +192,7 @@ function mergeStatusData(existingStatuses, newServices) {
         ...service,
         ...updatedService,
         pingInterval: updatedService.pingInterval * 1000,
+        verifySSL: updatedService.verifySSL !== undefined ? updatedService.verifySSL : true,
       };
     }
 
@@ -203,6 +206,7 @@ function mergeStatusData(existingStatuses, newServices) {
   const newStatusData = newServicesToAdd.map((service) => ({
     ...service,
     pingInterval: service.pingInterval * 1000,
+    verifySSL: service.verifySSL !== undefined ? service.verifySSL : true,
     dailyHistory: [],
     currentDayPings: { online: 0, total: 0 },
     lastPing: Date.now(),
@@ -257,7 +261,15 @@ async function pingService(service) {
 
     if (service.address.startsWith("http")) {
       const expectedStatusCode = service.expectedStatusCode || 200;
-      const response = await axios.get(service.address, { timeout: 5000 });
+
+      const axiosOptions = {
+        timeout: 5000,
+        httpsAgent: new https.Agent({
+          rejectUnauthorized: service.verifySSL !== false,
+        }),
+      };
+
+      const response = await axios.get(service.address, axiosOptions);
 
       const responseTime = Date.now() - startTime;
       return { isOnline: response.status === expectedStatusCode, responseTime };

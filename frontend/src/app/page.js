@@ -33,7 +33,7 @@ export default function Home() {
 
   const fetchStatusData = async () => {
     try {
-      const response = await axios.get("/api/status");
+      const response = await axios.get("./api/status");
       setTitle(response.data.title);
       setDescription(response.data.description);
       setStatuses(response.data.statuses);
@@ -44,7 +44,7 @@ export default function Home() {
 
   const fetchIncidents = async () => {
     try {
-      const response = await axios.get("/api/incidents");
+      const response = await axios.get("./api/incidents");
       setIncidents(response.data.incidents);
     } catch (error) {
       console.error("Error fetching incidents:", error);
@@ -154,38 +154,20 @@ export default function Home() {
                           <FaRegCircleXmark className="text-red-500" />
                         )}
                       </div>
-                      <span className="relative items-center group flex justify-center cursor-pointer">
-                        <h2 className="text-center">
-                        {status.address ? (
-                          <a
-                            href={status.address}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="text-white no-underline hover:no-underline"
-                          >
-                            {status.name}
-                          </a>
-                        ) : (
-                          <span>{status.name}</span>
-                        )}
-                        </h2>
-                        {(status.address || status.responseTime) && (
-                          <div className="absolute left-1/2 mb-2 hidden max-w-max w-auto whitespace-nowrap px-4 py-2 text-xs font-medium text-white translate-x-1/4 group-hover:block rounded-xl backdrop-blur-2xl border border-[#727DA1]/20 bg-[#171824]/80">
-                            {status.address && (
-                              <p className="flex items-center space-x-2 text-gray-400">
-                                <FaLink />
-                                <span>{status.address}</span>
-                              </p>
-                            )}
-                            {status.responseTime && (
-                              <p className="flex items-center space-x-2 text-gray-400">
-                                <FaWifi />
-                                <span>{status.responseTime}ms</span>
-                              </p>
-                            )}
-                          </div>
-                        )}
-                      </span>
+                      <h2 className="text-center">
+                      {status.address ? (
+                        <a
+                          href={status.address}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-white no-underline hover:no-underline"
+                        >
+                          {status.name}
+                        </a>
+                      ) : (
+                        <span>{status.name}</span>
+                      )}
+                      </h2>
                     </h2>
 
                     <div
@@ -210,6 +192,18 @@ export default function Home() {
                             <FaHourglassHalf />
                             <span>Ping every {status.pingInterval / 1000}s</span>
                           </p>
+                          {status.address && (
+                            <p className="flex items-center space-x-2 text-gray-400">
+                              <FaLink />
+                              <span>{status.address}</span>
+                            </p>
+                          )}
+                          {status.responseTime && (
+                            <p className="flex items-center space-x-2 text-gray-400">
+                              <FaWifi />
+                              <span>{status.responseTime}ms</span>
+                            </p>
+                          )}
                         </div>
                       </span>
                     </div>
