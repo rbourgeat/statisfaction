@@ -29,7 +29,6 @@ export default function Home() {
   const [title, setTitle] = useState("Status Page");
   const [description, setDescription] = useState("Check the status of our services below.");
   const [incidents, setIncidents] = useState([]);
-  const [isWinter, setIsWinter] = useState(false);
 
   const fetchStatusData = async () => {
     try {
@@ -62,21 +61,6 @@ export default function Home() {
     return () => clearInterval(interval);
   }, []);
 
-  useEffect(() => {
-    const checkWinter = () => {
-      const month = new Date().getMonth();
-      setIsWinter(month === 0); // Dec
-    };
-    
-    checkWinter();
-    
-    const interval = setInterval(() => {
-      checkWinter();
-    }, 3600000); // 1 hour
-
-    return () => clearInterval(interval);
-  }, []);
-
   const getBgColorIncident = (keyword) => {
     if (keyword.includes("Investigating")) return "bg-red-500";
     if (keyword.includes("Identified")) return "bg-orange-500";
@@ -105,9 +89,7 @@ export default function Home() {
   };
 
   return (
-    <div className="min-h-screen  text-white flex flex-col items-center justify-center">
-      {isWinter && <SnowEffect />}
-
+    <div className="min-h-screen text-white flex flex-col items-center justify-center">
       <div className="text-center">
         <h1 className="text-4xl font-bold mb-4 mt-6">{title}</h1>
         <p className="text-gray-400 mb-8">{description}</p>
