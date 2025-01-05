@@ -360,6 +360,8 @@ function resetDailyPings() {
       const lastDay = service.dailyHistory[service.dailyHistory.length - 1];
       if (lastDay.date !== today) {
         service.currentDayPings = { online: 0, total: 0 };
+        service.incidentReported = false;
+        service.downtimeStart = null;
       }
     }
   });
@@ -479,7 +481,7 @@ fs.watch(CONFIG_FILE, () => {
 
 setInterval(resetDailyPings, 1000 * 60 * 60 * 24);
 
-setInterval(updateStatuses, 1000);
+setInterval(updateStatuses, 5000);
 
 app.get("/api/incidents", async (req, res) => {
   const incidents = await fetchPastIncidents();

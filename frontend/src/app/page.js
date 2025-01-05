@@ -170,10 +170,16 @@ export default function Home() {
                           {averageUptime}% uptime
                         </h2>
                         <div className="absolute left-1/2 mb-2 hidden max-w-max w-auto whitespace-nowrap px-4 py-2 text-xs font-medium text-white translate-x-1/2 group-hover:block rounded-xl backdrop-blur-2xl border border-[#727DA1]/20 bg-[#171824]/80">
+                        {status.pingInterval ? (
                           <p className="flex items-center space-x-2 text-gray-400">
                             <FaHourglassHalf />
                             <span>Ping every {status.pingInterval / 1000}s</span>
                           </p>
+                        ) : (
+                          <p className="flex items-center space-x-2 text-gray-400">
+                            Ping interval not available
+                          </p>
+                        )}
                           {status.address && (
                             <p className="flex items-center space-x-2 text-gray-400">
                               <FaLink />
@@ -239,9 +245,9 @@ export default function Home() {
                                 ? "text-gray-400"
                                 : day.downtimeHours?.toFixed(1) == 0
                                 ? "text-green-400"
-                                : day.downtimeHours?.toFixed(1) <= 0.1
+                                : day.downtimeHours?.toFixed(1) <= 0.25
                                 ? "text-yellow-400"
-                                : day.downtimeHours?.toFixed(1) <= 0.3
+                                : day.downtimeHours?.toFixed(1) <= 0.5
                                 ? "text-orange-400"
                                 : "text-red-500"
                               }`}>
