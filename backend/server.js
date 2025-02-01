@@ -6,6 +6,8 @@ import path from 'path';
 import ping from 'ping';
 import cors from 'cors';
 import fs from 'fs';
+import { createServer } from 'http';
+import { WebSocketServer } from 'ws';
 
 import { Octokit } from '@octokit/rest';
 import { Gitlab } from 'gitlab';
@@ -13,8 +15,11 @@ import { Gitlab } from 'gitlab';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-
 const app = express();
+const server = createServer(app);
+const wss = new WebSocketServer({ server });
+const clients = new Set();
+
 const PORT = 3000;
 const DATA_FOLDER = path.join(__dirname, "../data");
 const DATA_FILE = path.join(DATA_FOLDER, "statusData.json");
@@ -22,6 +27,11 @@ const CONFIG_FILE = path.join(__dirname, "../config.json");
 
 app.use(cors());
 app.use(express.static(path.join(__dirname, "frontend/out")));
+
+wss.on('connection', (ws) => {
+  clients.add(ws);
+  ws.on('close', () => clients.delete(ws));
+});
 
 if (!fs.existsSync(DATA_FOLDER)) {
   fs.mkdirSync(DATA_FOLDER, { recursive: true });
@@ -351,6 +361,21 @@ async function updateStatuses() {
 
   statuses = updatedStatuses;
   saveStatusData(statuses);
+
+  const broadcastData = {
+    title: config.configs.title,
+    description: config.configs.description,
+    statuses: statuses.map(service => {
+      const { dailyHistory, ...rest } = service;
+      return { ...rest, dailyHistory: dailyHistory.slice(-90) };
+    })
+  };
+
+  clients.forEach(client => {
+    if (client.readyState === WebSocket.OPEN) {
+      client.send(JSON.stringify(broadcastData));
+    }
+  });
 }
 
 function resetDailyPings() {
@@ -480,21 +505,17 @@ fs.watch(CONFIG_FILE, () => {
 });
 
 setInterval(resetDailyPings, 1000 * 60 * 60 * 24);
-
 setInterval(updateStatuses, 5000);
 
 app.get("/api/incidents", async (req, res) => {
   const incidents = await fetchPastIncidents();
-
   res.json({ incidents: incidents });
 });
 
 app.get("/api/status", (req, res) => {
   const optimizedStatuses = statuses.map((service) => {
     const { showIp, address, responseTime, dailyHistory, ...rest } = service;
-
     const optimizedDailyHistory = dailyHistory.slice(-90);
-
     return showIp
       ? { ...rest, address, responseTime, dailyHistory: optimizedDailyHistory }
       : { ...rest, responseTime, dailyHistory: optimizedDailyHistory };
@@ -511,7 +532,7 @@ app.get("*", (req, res) => {
   res.sendFile(path.join(__dirname, "frontend/out", "index.html"));
 });
 
-app.listen(PORT, () => {
+server.listen(PORT, () => {
   console.log(" ");
   console.log("   ▗▄▄▖▗▄▄▄▖▗▄▖▗▄▄▄▖▗▄▄▄▖ ▗▄▄▖▗▄▄▄▖ ▗▄▖  ▗▄▄▖▗▄▄▄▖▗▄▄▄▖ ▗▄▖ ▗▖  ▗▖");
   console.log("  ▐▌     █ ▐▌ ▐▌ █    █  ▐▌   ▐▌   ▐▌ ▐▌▐▌     █    █  ▐▌ ▐▌▐▛▚▖▐▌");

@@ -30,17 +30,6 @@ export default function Home() {
   const [description, setDescription] = useState("Check the status of our services below.");
   const [incidents, setIncidents] = useState([]);
 
-  const fetchStatusData = async () => {
-    try {
-      const response = await axios.get("./api/status");
-      setTitle(response.data.title);
-      setDescription(response.data.description);
-      setStatuses(response.data.statuses);
-    } catch (error) {
-      console.error("Error fetching status data:", error);
-    }
-  };
-
   const fetchIncidents = async () => {
     try {
       const response = await axios.get("./api/incidents");
@@ -51,14 +40,24 @@ export default function Home() {
   };
 
   useEffect(() => {
-    fetchStatusData();
-    fetchIncidents();
+    const ws = new WebSocket(`ws://${window.location.host}`);
+    
+    ws.onmessage = (event) => {
+      const data = JSON.parse(event.data);
+      setTitle(data.title);
+      setDescription(data.description);
+      setStatuses(data.statuses);
+    };
 
-    const interval = setInterval(() => {
-      fetchStatusData();
-      fetchIncidents();
-    }, 2000); // 2 seconds
-    return () => clearInterval(interval);
+    ws.onclose = () => console.log('WebSocket disconnected');
+    
+    const fetchInitial = async () => {
+      await fetchIncidents();
+    };
+    
+    fetchInitial();
+    
+    return () => ws.close();
   }, []);
 
   const getBgColorIncident = (keyword) => {

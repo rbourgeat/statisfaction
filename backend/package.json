@@ -14,11 +14,13 @@
   },
   "dependencies": {
     "@octokit/rest": "^21.0.2",
+    "@types/ws": "^8.5.14",
     "axios": "^1.7.7",
     "cors": "^2.8.5",
     "express": "^4.21.1",
     "gitlab": "^14.2.2",
-    "ping": "^0.4.4"
+    "ping": "^0.4.4",
+    "ws": "^8.18.0"
   },
   "type": "module"
 }
